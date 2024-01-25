@@ -182,6 +182,31 @@ def classify_cell_size(image_bytes, dataset_path):
             print(f'{subdir} Averages:')
             print({'Top': avg_top_subdir, 'Mid': avg_mid_subdir, 'Bottom': avg_bottom_subdir})
 
+            if (
+                avg_top_input >= 0.8*avg_top_subdir
+                and avg_mid_input >= 0.8*avg_mid_subdir
+                or avg_bottom_input >= 0.8*avg_bottom_subdir
+            ):
+                classification_result['Classification'] = subdir
+                print({subdir})
+            elif (
+                avg_top_input >= 0.8*avg_top_subdir
+                and avg_bottom_input >= 0.8*avg_bottom_subdir
+                or avg_mid_input >= 0.8*avg_mid_subdir
+            ):
+                classification_result['Classification'] = subdir
+                print({subdir})
+            elif (
+                avg_bottom_input >= 0.8*avg_bottom_subdir
+                and avg_mid_input >= 0.8*avg_mid_subdir
+                or avg_top_input >= 0.8*avg_top_subdir
+            ):
+                classification_result['Classification'] = subdir
+                print({subdir})
+            else:
+                classification_result['Classification'] = 'Normal'
+
+
     draw_horizontal_lines(result_image, image_height // 3)
     _, img_encoded_result = cv2.imencode('.jpg', result_image)
     img_base64_result = base64.b64encode(img_encoded_result).decode('utf-8')
@@ -196,7 +221,7 @@ def classify_cell_size(image_bytes, dataset_path):
     print('Classification:', classification_result.get('Classification'))
 
     return {
-        'totalNuclei': nuclei_count,
+        'totalNuclei': classification_result.get('TotalNuclei'),
         'averageTop': avg_top_input,
         'averageMiddle': avg_mid_input,
         'averageBottom': avg_bottom_input,
