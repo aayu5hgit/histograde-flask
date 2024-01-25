@@ -1,4 +1,5 @@
 # cellsize.py
+import os
 import cv2
 import numpy as np
 from flask import jsonify, request
@@ -10,7 +11,7 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
-    
+
 def apply_color_mask(image, low_range, high_range):
     lower_bound = np.array(low_range, dtype=np.uint8)
     upper_bound = np.array(high_range, dtype=np.uint8)
@@ -81,46 +82,125 @@ def draw_horizontal_lines(image, section_height):
     cv2.line(image, (0, section_height), (image.shape[1], section_height), line_color, line_thickness)
     cv2.line(image, (0, 2 * section_height), (image.shape[1], 2 * section_height), line_color, line_thickness)
 
-def cell_size(image_bytes):
+# def calculate_average_of_dataset(dataset_path):
+#     averages = {'Top': [], 'Middle': [], 'Bottom': []}
+
+#     for subdir in os.listdir(dataset_path):
+#         subdir_path = os.path.join(dataset_path, subdir)
+
+#         if os.path.isdir(subdir_path):
+#             subdir_averages = {'Top': [], 'Middle': [], 'Bottom': []}
+
+#             for file_name in os.listdir(subdir_path):
+#                 file_path = os.path.join(subdir_path, file_name)
+
+#                 # Read and process each image in the dataset
+#                 image = cv2.imread(file_path, cv2.IMREAD_COLOR)
+#                 gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+#                 _, nuclei_count, nuclei_sizes, nuclei_contours = find_draw_nuclei_boundaries_and_get_sizes(
+#                     gray_image, min_area=20
+#                 )
+#                 image_height, _, _ = image.shape
+#                 avg_top, avg_mid, avg_bottom = calculate_average_nucleus_size(
+#                     image_height, nuclei_contours, nuclei_sizes
+#                 )
+
+#                 subdir_averages['Top'].append(avg_top)
+#                 subdir_averages['Middle'].append(avg_mid)
+#                 subdir_averages['Bottom'].append(avg_bottom)
+
+#             avg_top_subdir = np.mean(subdir_averages['Top']) if any(subdir_averages['Top']) else 0
+#             avg_mid_subdir = np.mean(subdir_averages['Middle']) if any(subdir_averages['Middle']) else 0
+#             avg_bottom_subdir = np.mean(subdir_averages['Bottom']) if any(subdir_averages['Bottom']) else 0
+
+#             print(f'{subdir} Averages:')
+#             print({'Top': avg_top_subdir, 'Mid': avg_mid_subdir, 'Bottom': avg_bottom_subdir})
+
+#             averages['Top'].append(avg_top_subdir)
+#             averages['Middle'].append(avg_mid_subdir)
+#             averages['Bottom'].append(avg_bottom_subdir)
+
+#     return avg_top_subdir, avg_mid_subdir, avg_bottom_subdir
+
+
+
+def classify_cell_size(image_bytes, dataset_path):
     original_image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
 
+    # Calculate the average cell size for the input image
     cell_low_range = (52, 52, 52)
     cell_high_range = (255, 255, 255)
-
     masked_image = apply_color_mask(original_image, cell_low_range, cell_high_range)
-
     gray_masked_image = cv2.cvtColor(masked_image, cv2.COLOR_BGR2GRAY)
-
     result_image, nuclei_count, nuclei_sizes, nuclei_contours = find_draw_nuclei_boundaries_and_get_sizes(
         gray_masked_image, min_area=15
     )
-
     image_height, _, _ = original_image.shape
-    section_height = image_height // 3
-    average_top, average_middle, average_bottom = calculate_average_nucleus_size(
+    avg_top_input, avg_mid_input, avg_bottom_input = calculate_average_nucleus_size(
         image_height, nuclei_contours, nuclei_sizes
     )
 
-    draw_horizontal_lines(result_image, section_height)
+    # Compare input with the dataset averages
+    classification_result = {
+        'TotalNuclei': nuclei_count,
+        'AverageTopInput': avg_top_input,
+        'AverageMidInput': avg_mid_input,
+        'AverageBottomInput': avg_bottom_input,
+        'ResultImage': None,
+        'OriginalImage': None,
+        'Classification': '',
+    }
 
+    for subdir in os.listdir(dataset_path):
+        subdir_path = os.path.join(dataset_path, subdir)
+
+        if os.path.isdir(subdir_path):
+            subdir_averages = {'Top': [], 'Middle': [], 'Bottom': []}
+
+            for file_name in os.listdir(subdir_path):
+                file_path = os.path.join(subdir_path, file_name)
+
+                # Read and process each image in the dataset
+                image = cv2.imread(file_path, cv2.IMREAD_COLOR)
+                gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                _, nuclei_count, nuclei_sizes, nuclei_contours = find_draw_nuclei_boundaries_and_get_sizes(
+                    gray_image, min_area=20
+                )
+                image_height, _, _ = image.shape
+                avg_top, avg_mid, avg_bottom = calculate_average_nucleus_size(
+                    image_height, nuclei_contours, nuclei_sizes
+                )
+
+                subdir_averages['Top'].append(avg_top)
+                subdir_averages['Middle'].append(avg_mid)
+                subdir_averages['Bottom'].append(avg_bottom)
+
+            avg_top_subdir = np.mean(subdir_averages['Top']) if any(subdir_averages['Top']) else 0
+            avg_mid_subdir = np.mean(subdir_averages['Middle']) if any(subdir_averages['Middle']) else 0
+            avg_bottom_subdir = np.mean(subdir_averages['Bottom']) if any(subdir_averages['Bottom']) else 0
+
+            print(f'{subdir} Averages:')
+            print({'Top': avg_top_subdir, 'Mid': avg_mid_subdir, 'Bottom': avg_bottom_subdir})
+
+    draw_horizontal_lines(result_image, image_height // 3)
     _, img_encoded_result = cv2.imencode('.jpg', result_image)
     img_base64_result = base64.b64encode(img_encoded_result).decode('utf-8')
 
     _, img_encoded_original = cv2.imencode('.jpg', original_image)
     img_base64_original = base64.b64encode(img_encoded_original).decode('utf-8')
 
-    response_data = {
+    print('Total Nuclei:', classification_result.get('TotalNuclei'))
+    print('Avg cell size (Top): ', classification_result.get('AverageTopInput'))
+    print('Avg cell size (Mid): ', classification_result.get('AverageMidInput'))
+    print('Avg cell size (Bottom): ', classification_result.get('AverageBottomInput'))
+    print('Classification:', classification_result.get('Classification'))
+
+    return {
         'totalNuclei': nuclei_count,
-        'averageTop': average_top,
-        'averageMiddle': average_middle,
-        'averageBottom': average_bottom,
+        'averageTop': avg_top_input,
+        'averageMiddle': avg_mid_input,
+        'averageBottom': avg_bottom_input,
         'resultImage': img_base64_result,
         'originalImage': img_base64_original,
+        'classificationResult': classification_result.get('Classification'),
     }
-
-    print('Total Nuclei:', response_data.get('totalNuclei'))
-    print('Avg cell size (Top): ', response_data.get('averageTop'))
-    print('Avg cell size (Mid): ', response_data.get('averageMiddle'))
-    print('Avg cell size (Bottom): ', response_data.get('averageBottom'))
-
-    return jsonify(response_data)

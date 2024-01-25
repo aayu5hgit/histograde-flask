@@ -1,12 +1,12 @@
 # app.py
 from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS  # Import the CORS extension
+from flask_cors import CORS
 import cv2
 import numpy as np
 import urllib.request
 import base64
 import json
-from cellsize import cell_size
+from cellsize import classify_cell_size
 from nucleussize import process_nucleus_image
 
 class NumpyEncoder(json.JSONEncoder):
@@ -16,8 +16,7 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes in the app
-
+CORS(app)
 
 @app.route("/")
 def index():
@@ -30,14 +29,18 @@ def cell_size_route():
         if image_file is None:
             return jsonify({'error': 'No image file provided'})
 
+        dataset_path = './dataset'  # Provide the actual dataset path
+
         # Read image file
         image_bytes = image_file.read()
 
-        return cell_size(image_bytes)
+        # Call the classification function with the dataset path
+        result = classify_cell_size(image_bytes, dataset_path)
+
+        return jsonify(result)
 
     except Exception as e:
         return jsonify({'error': str(e)})
-    
 
 @app.route('/api/nucleus_size', methods=['POST'])
 def nucleus_size():
@@ -49,8 +52,10 @@ def nucleus_size():
         # Read image file
         image_bytes = image_file.read()
 
-        return process_nucleus_image(image_bytes)
+        # Call the nucleus size processing function
+        result = process_nucleus_image(image_bytes)
 
+        return jsonify(result)
 
     except Exception as e:
         return jsonify({'error': str(e)})
