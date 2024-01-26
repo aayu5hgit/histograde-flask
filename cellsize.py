@@ -189,6 +189,7 @@ def classify_cell_size(image_bytes, dataset_path):
             ):
                 classification_result['Classification'] = subdir
                 print({subdir})
+                break
             elif (
                 avg_top_input >= 0.8*avg_top_subdir
                 and avg_bottom_input >= 0.8*avg_bottom_subdir
@@ -196,6 +197,7 @@ def classify_cell_size(image_bytes, dataset_path):
             ):
                 classification_result['Classification'] = subdir
                 print({subdir})
+                break
             elif (
                 avg_bottom_input >= 0.8*avg_bottom_subdir
                 and avg_mid_input >= 0.8*avg_mid_subdir
@@ -203,6 +205,7 @@ def classify_cell_size(image_bytes, dataset_path):
             ):
                 classification_result['Classification'] = subdir
                 print({subdir})
+                break
             else:
                 classification_result['Classification'] = 'Normal'
 
