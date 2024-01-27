@@ -83,7 +83,7 @@ def draw_horizontal_lines(image, section_height):
     cv2.line(image, (0, section_height), (image.shape[1], section_height), line_color, line_thickness)
     cv2.line(image, (0, 2 * section_height), (image.shape[1], 2 * section_height), line_color, line_thickness)
 
-def process_nucleus_image(image_bytes):
+def process_nucleoli_image(image_bytes):
     original_image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
 
     # Adjusted lower and upper bounds for nucleus detection
@@ -177,10 +177,6 @@ def process_nucleus_image(image_bytes):
     print("Average Top:", average_top)
     print("Average Middle:", average_middle)
     print("Average Bottom:", average_bottom)
-
-    # Draw horizontal lines to separate the sections
-    draw_horizontal_lines(result_image, image_height // 3)
-
 
     # Encode images to base64 for JSON response
     _, img_encoded_result = cv2.imencode('.jpg', image_with_clean_nucleus_contours)
