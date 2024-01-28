@@ -87,7 +87,7 @@ def process_nucleus_image(image_bytes):
     original_image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
 
     # Adjusted lower and upper bounds for nucleus detection
-    nucleus_low_range = (90, 55, 50)
+    nucleus_low_range = (100, 40, 80)
     nucleus_high_range = (255, 255, 255)
 
     # Apply the color range masking with the adjusted range for nucleus detection
