@@ -5,12 +5,32 @@ import numpy as np
 from flask import jsonify, request
 import base64
 import json
+from PIL import Image
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
+    
+def average_color(sample):
+    pix = sample.load()
+    totals = [0.0, 0.0, 0.0]
+    for y in range(sample.size[1]):
+        for x in range(sample.size[0]):
+            color = pix[x, y]
+            for c in range(3):
+                totals[c] += color[c] ** 2.2
+    count = sample.size[0] * sample.size[1]
+    color = tuple(int(round((totals[c] / count) ** (1 / 2.2))) for c in range(3))
+    return color
+
+def normalize_colors(image):
+    image_array = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image_pil = Image.fromarray(image_array)
+    average_rgb = average_color(image_pil)
+    normalized_image = cv2.convertScaleAbs(image, alpha=255 / max(average_rgb))
+    return normalized_image
 
 def apply_color_mask(image, low_range, high_range):
     lower_bound = np.array(low_range, dtype=np.uint8)
@@ -127,10 +147,13 @@ def draw_horizontal_lines(image, section_height):
 def classify_cell_size(image_bytes, dataset_path):
     original_image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
 
+    # Normalize colors of the input image
+    normalized_image = normalize_colors(original_image)
+
     # Calculate the average cell size for the input image
     cell_low_range = (52, 52, 52)
     cell_high_range = (255, 255, 255)
-    masked_image = apply_color_mask(original_image, cell_low_range, cell_high_range)
+    masked_image = apply_color_mask(normalized_image, cell_low_range, cell_high_range)
     gray_masked_image = cv2.cvtColor(masked_image, cv2.COLOR_BGR2GRAY)
     result_image, nuclei_count, nuclei_sizes, nuclei_contours = find_draw_nuclei_boundaries_and_get_sizes(
         gray_masked_image, min_area=15
