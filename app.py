@@ -8,6 +8,8 @@ import base64
 import json
 from cellsize import classify_cell_size
 from nucleussize import process_nucleus_image
+from hyperchromasia import detect_hyperchromasia
+from increasednucleoli import analyze_nucleoli  # Import the analyze_nucleoli function
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -59,6 +61,47 @@ def nucleus_size():
 
     except Exception as e:
         return jsonify({'error': str(e)})
+
+
+@app.route('/api/hyperchromasia', methods=['POST'])
+def hyperchromasia_route():
+    try:
+        image_file = request.files.get('image')
+        if image_file is None:
+            return jsonify({'error': 'No image file provided'})
+
+        # Read image file
+        image_bytes = image_file.read()
+
+        # Call the hyperchromasia detection function
+        result = detect_hyperchromasia(image_bytes)
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/increased_nucleoli', methods=['POST'])  
+def increased_nucleoli_route():
+    try:
+        # Read the image data from the request
+        image_file = request.files.get('image')
+        if image_file is None:
+            return jsonify({'error': 'No image file provided'})
+
+        # Read image file
+        image_bytes = image_file.read()
+
+        # Analyze nucleoli
+        result = analyze_nucleoli(image_bytes)
+
+        # Return the result as JSON
+        return jsonify(result)
+
+    except Exception as e:
+        # Return error response
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)

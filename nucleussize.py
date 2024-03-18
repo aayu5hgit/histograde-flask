@@ -112,7 +112,6 @@ def process_nucleus_image(image_bytes):
     # Find contours of the white spots on the binary mask
     white_spot_contours, _ = cv2.findContours(white_spot_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-
     # Create a copy of the original masked image to overlay white spot contours
     image_with_white_spot_contours = masked_image.copy()
 
@@ -121,20 +120,17 @@ def process_nucleus_image(image_bytes):
 
     # Iterate through contours and overlay them on the original image
     for white_spot_contour in white_spot_contours:
-    # Calculate the area of the current white spot contour
+        # Calculate the area of the current white spot contour
         contour_area = cv2.contourArea(white_spot_contour)
 
-    # Check if the contour area is above the threshold
+        # Check if the contour area is above the threshold
         if contour_area > 10:
-        # Draw contours for white spots that meet the threshold in blue
+            # Draw contours for white spots that meet the threshold in blue
             cv2.drawContours(image_with_white_spot_contours, [white_spot_contour], -1, (0, 0, 255), 1)  # Blue color for white spot contours
 
-        # Add the contour to the list if it meets the area threshold
-        if contour_area > 10:  # Reject nuclei with an area less than 10
-            nucleus_contours_above_threshold.append(white_spot_contour)# Blue color for white spot contours
-
-            # Add the contour to the list
-            nucleus_contours_above_threshold.append(white_spot_contour)
+            # Add the contour to the list if it meets the area threshold
+            if contour_area > 10:  # Reject nuclei with an area less than 10
+                nucleus_contours_above_threshold.append(white_spot_contour)
 
     # Apply morphological operations to remove noise from the binary mask
     kernel = np.ones((1, 1), np.uint8)
@@ -142,7 +138,6 @@ def process_nucleus_image(image_bytes):
 
     # Find contours of the clean nuclei mask
     clean_nucleus_contours, _ = cv2.findContours(clean_nucleus_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
 
     # Create a copy of the original masked image to overlay clean nuclei contours
     image_with_clean_nucleus_contours = negative_image.copy()
@@ -168,12 +163,19 @@ def process_nucleus_image(image_bytes):
     # Create an RGB version of the image for visualization
     result_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
 
+    # Calculate the total size of all nuclei contours
+    total_nuclei_size = sum([cv2.contourArea(contour) for contour in clean_nucleus_contours])
+
     average_top, average_middle, average_bottom = calculate_average_nucleus_size(
         image_height, nucleus_contours_above_threshold, [cv2.contourArea(contour) for contour in nucleus_contours_above_threshold]
     )
 
     # Print the total number of boundaries detected
     print("Nuclei Count:", len(clean_nucleus_contours))
+    print("Total Nuclei Size:", total_nuclei_size)
+    print(average_top)
+    print(average_middle)
+    print(average_bottom)
 
     # Encode images to base64 for JSON response
     _, img_encoded_result = cv2.imencode('.jpg', image_with_clean_nucleus_contours)
@@ -182,8 +184,9 @@ def process_nucleus_image(image_bytes):
     _, img_encoded_original = cv2.imencode('.jpg', original_image)
     img_base64_original = base64.b64encode(img_encoded_original).decode('utf-8')
 
-    response_data = {
+    return {
         'totalNuclei': len(clean_nucleus_contours),
+        'totalNucleiSize': total_nuclei_size,  # Include total size of all nuclei contours
         'resultImage': img_base64_result,
         'originalImage': img_base64_original,
         'averageTop': average_top,
@@ -191,7 +194,7 @@ def process_nucleus_image(image_bytes):
         'averageBottom': average_bottom,
     }
 
-    return jsonify(response_data)
+
 
 
 if __name__ == '__main__':

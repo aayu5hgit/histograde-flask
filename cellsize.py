@@ -139,6 +139,7 @@ def classify_cell_size(image_bytes, dataset_path):
     avg_top_input, avg_mid_input, avg_bottom_input = calculate_average_nucleus_size(
         image_height, nuclei_contours, nuclei_sizes
     )
+    total_cell_size = np.sum(nuclei_sizes)
 
     # Compare input with the dataset averages
     classification_result = {
@@ -225,6 +226,7 @@ def classify_cell_size(image_bytes, dataset_path):
 
     return {
         'totalNuclei': classification_result.get('TotalNuclei'),
+        'totalCellSize': total_cell_size,
         'averageTop': avg_top_input,
         'averageMiddle': avg_mid_input,
         'averageBottom': avg_bottom_input,
